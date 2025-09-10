@@ -27,7 +27,7 @@ public class BusinessLogic {
     // REST Clients to communicate with other microservices
     private RestClient notificationServiceClient = RestClient.create();
     private RestClient sessionManagerClient = RestClient.create();
-    private String session = "http://session-manager:8083/api/v1/login";
+    private String session = "http://session-manager:8090/api/v1/login";
 
     private HashMap<String, RestClient> restRouter = new HashMap<>();
     private HashMap<RestClient, String> restEndpoints = new HashMap<>();
@@ -60,6 +60,7 @@ public class BusinessLogic {
             LOG.info("Login successful for email: " + loginRequest.getEmail());
             
             // notify the session manager of the successful login and set username as active session
+            LOG.info("Updating the session manager with the active user: " + loginAttempt.getUsername());
             sessionManagerClient.post()
                 .uri(session)
                 .contentType(MediaType.APPLICATION_JSON)
