@@ -68,13 +68,25 @@
 		<dependency>
 			<groupId>com.ca.bryzn</groupId>
 			<artifactId>icd</artifactId>
-			<version>0.1.0</version>
+			<version>0.1.2</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>42.7.2</version>
+		</dependency>
+
+		<!-- FLYWAY -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+			<version>11.13.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+			<version>11.13.1</version>
 		</dependency>
 
 		<!-- Spring Data JPA -->
@@ -90,6 +102,22 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+
+			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<version>11.13.1</version>
+				<configuration>
+					<url>jdbc:postgresql://localhost:5432/bryzndb</url>
+					<user>user</user>
+					<password>password</password>
+					<schemas>
+						<schema>public</schema>
+					</schemas>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
+	
 </project>

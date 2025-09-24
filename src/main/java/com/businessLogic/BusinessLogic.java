@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import com.postgres.PostgresService;
 import com.postgres.models.Account;
+import com.topics.AccountInfoRequest;
+import com.topics.AccountInfoResponse;
 import com.topics.LoginRequest;
 import com.topics.LoginResponse;
 import com.topics.NewAccountRequest;
@@ -82,6 +84,34 @@ public class BusinessLogic {
         }
     }
 
+    public ResponseEntity<String> processAccountInfoRequest(AccountInfoRequest accountInfoRequest) {
+        LOG.info("Processing the AccountInfoRequest...");
+        // give a default value for easier debugging
+        String status = "Internal Error: Could not grab user data.";
+        Account accountInfo;
+
+        LOG.info("Attempting to search by email...");
+        if(postgresService.findByEmail(accountInfoRequest.getEmail()) != null) {
+            accountInfo = postgresService.findByEmail(accountInfoRequest.getEmail());
+            LOG.info("Found account with the email " + accountInfoRequest.getEmail() + "!!");
+            AccountInfoResponse rsp = createAccountInfoResponse(accountInfo, accountInfoRequest);
+            return ResponseEntity.ok().body(rsp.toString());
+        }
+
+        LOG.info("Attempting to search by username...");
+        if(postgresService.findByUsername(accountInfoRequest.getUsername()) != null) {
+            accountInfo = postgresService.findByUsername(accountInfoRequest.getUsername());
+            LOG.info("Found account with the username " + accountInfoRequest.getEmail() + "!!");
+            AccountInfoResponse rsp = createAccountInfoResponse(accountInfo, accountInfoRequest);
+            return ResponseEntity.ok().body(rsp.toString());
+        }
+        
+        return ResponseEntity.status(500).body(status);
+    }
+
+
+
+
     public ResponseEntity<String> processNewAccountRequest(NewAccountRequest newAccountRequest) {
         LOG.info("Processing the NewAccountRequest...");
         // give a default value for easier debugging
@@ -97,14 +127,14 @@ public class BusinessLogic {
                 newAccount.setCvc(newAccountRequest.getCvc());
 
         if(postgresService.findByEmail(newAccountRequest.getEmail()) != null) {
-            LOG.info("Failed to create a new account... Email already in use" + newAccountRequest.getEmail());
+            LOG.info("Failed to create a new account... Email already in use " + newAccountRequest.getEmail());
             status = "FAILED";
             statusMsg = "Email already in use";
             return ResponseEntity.status(409).body("Account creation failed: Email already in use.");
         }
 
         if(postgresService.findByUsername(newAccountRequest.getUsername()) != null) {
-            LOG.info("Failed to create a new account... Username already in use" + newAccountRequest.getUsername());
+            LOG.info("Failed to create a new account... Username already in use " + newAccountRequest.getUsername());
             status = "FAILED";
             statusMsg = "Username already in use";
             return ResponseEntity.status(409).body("Account creation failed: Username already in use.");
@@ -172,5 +202,25 @@ public class BusinessLogic {
         newAccountResponse.setStatus(NewAccountResponse.Status.valueOf(status));
         newAccountResponse.setStatusMessage(stsMsg);
         return newAccountResponse;
+    }
+
+    private AccountInfoResponse createAccountInfoResponse(Account account, AccountInfoRequest accountInfoRequest) {
+        LOG.info("Creating a AccountInfoResponse...");
+        AccountInfoResponse accountInfoResponse = new AccountInfoResponse();
+        accountInfoResponse.setTopicName("AccountInfoResponse");
+        accountInfoResponse.setCorrelatorId(accountInfoRequest.getCorrelatorId());
+        accountInfoResponse.setName(account.getName());
+        accountInfoResponse.setEmail(account.getEmail());
+        accountInfoResponse.setUsername(account.getUsername());
+        accountInfoResponse.setRewardPoints(account.getRewardPoints());
+
+        if(account.getCreditCard() != null && !account.getCreditCard().isEmpty())
+        {
+            accountInfoResponse.setCreditCard(account.getCreditCard());
+            accountInfoResponse.setCvc(account.getCvc());
+        } else {
+            accountInfoResponse.setCreditCard("No credit card on file.");
+        }
+        return accountInfoResponse;
     }
 }

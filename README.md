@@ -22,3 +22,35 @@
   "email": "john.doe@example.com",
   "password": "superSecret1"
 }
+
+
+// WORKING POSTGRES JSON TEST WITH DATABASE
+{
+  "topicName": "AccountInfoRequest",
+  "correlatorId": 12345,
+  "email": "bryzntest@gmail.com"
+}
+
+{
+  "topicName": "AccountInfoRequest",
+  "correlatorId": 12345,
+  "username": "bryznnguyen"
+}
+
+
+
+POSTGRES NOTES
+Flyway has scripts that can create tables and insert data. 
+Files have to follow specific format for naming
+
+Mapping tables to schemas to avoid versioning issue with Flyway
+
+V<VERSION>__<NAME>.sql
+V: Uppercase 'V' indicating a versioned migration.
+<VERSION>: The version number (e.g., 1, 1_1, 202409221530).
+__: Two underscores separating the version from the name.
+<NAME>: A descriptive name for the migration (e.g., create_person_table).
+.sql: The file extension.
+
+
+MAP Entity USING @Column with fields such as name, nullable, or unique

@@ -1,21 +1,38 @@
 package com.postgres.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "users", schema = "user_management")
 public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "name", nullable = false)
     private String name;
+    
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
+
+    @Column(name = "username", unique = true, nullable = false)
     private String username;
+    
+    @Column(name = "password", nullable = false)
     private String password;
+
+    @Column(name = "reward_points", nullable = false)
     private int rewardPoints;
+
+    @Column(name = "credit_card", nullable = false)
     private String creditCard;
+
+    @Column(name = "cvc", nullable = false)
     private String cvc;
 
     // for JPA only, no use
