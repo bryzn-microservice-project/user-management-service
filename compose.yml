@@ -42,6 +42,12 @@ services:
   #     SPRING_FLYWAY_LOCATIONS: classpath:db/migration
   #     SPRING_FLYWAY_BASELINE_ON_MIGRATE: true
 
+  #     # CUSTOM
+  #     SESSION_MANAGER: session-manager
+  #     SESSION_MANAGER_PORT: 8090
+  #     NOTIFICATION_SERVICE: notification-service
+  #     NOTIFICATION_SERVICE_PORT: 8083
+
   #   depends_on:
   #     postgres:
   #       condition: service_healthy
@@ -61,19 +67,6 @@ services:
     - ./config/application.properties:/app/config/application.properties
     ports:
       - "8090:8090"
-
-  # notification-service:
-  #   image: ns
-  #   container_name: notification-service
-  #   environment:
-  #     // TO DO
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./src/main/resources/application.properties:/app/config/application.properties
-  #   ports:
-  #     - "8083:8083"
 
 volumes:
   pgdata:

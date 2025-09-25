@@ -37,6 +37,13 @@
   "username": "bryznnguyen"
 }
 
+{
+  "topicName": "LoginRequest",
+  "correlatorId": 67890,
+  "email": "bryzntest@gmail.com",
+  "password": "pass123"
+}
+
 
 
 POSTGRES NOTES

@@ -3,11 +3,14 @@ package com.businessLogic;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import com.topics.LoginResponse;
 import com.topics.NewAccountResponse;
+
+import jakarta.annotation.PostConstruct;
 
 
 @Service
@@ -17,11 +20,23 @@ public class AsyncLogic {
     // REST Clients to communicate with other microservices
     private RestClient notificationServiceClient = RestClient.create();
 
+    @Value("${notification.service}")
+    private String notificationService;
+    @Value("${notification.service.port}")
+    private String notificationServicePort;
+    private String ns;
+
     private HashMap<String, RestClient> restRouter = new HashMap<>();
     private HashMap<RestClient, String> restEndpoints = new HashMap<>();
 
-    public AsyncLogic() {
-        mapTopicsToClient();
+    @PostConstruct
+    public void init() {
+        ns = "http://" + notificationService + ":" + notificationServicePort + "/api/v1/processTopic";
+        restRouter.put("LoginResponse", notificationServiceClient);
+        restRouter.put("NewAccountResponse", notificationServiceClient);
+        restEndpoints.put(notificationServiceClient, ns);
+        LOG.info("AsyncLogic initialized with Notification Service at: " + ns);
+        LOG.info("Sucessfully mapped the topics to their respective microservices...");
     }
 
     /* Method to map topics to their respective microservices and endpoints
@@ -36,13 +51,6 @@ public class AsyncLogic {
      * # service-orchestrator:8089
      * # session-manager:8090   
     */
-    public void mapTopicsToClient() {
-        restRouter.put("LoginResponse", notificationServiceClient);
-        restRouter.put("NewAccountResponse", notificationServiceClient);
-        restEndpoints.put(notificationServiceClient, "http://notification-service:8083/api/v1/processTopic");
-
-        LOG.info("Sucessfully mapped the topics to their respective microservices...");
-    }
 
     // send reward responses and account login responses asynchronously
     // to the notification service
@@ -54,7 +62,6 @@ public class AsyncLogic {
             .body(loginResponse)
             .retrieve()
             .toEntity(String.class);
-        
     }
 
     @Async 

@@ -15,7 +15,7 @@ RUN mkdir -p /root/.m2 && \
 RUN mvn clean package -DskipTests && cp target/*.jar target/app.jar
 
 # Stage 2: Create the final image with JDK 21 that just runs the application
-FROM openjdk:21-jdk
+FROM openjdk:21-jdk 
 WORKDIR /app
 COPY --from=builder /app/target/app.jar app.jar
 EXPOSE 8080

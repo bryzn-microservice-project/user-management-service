@@ -5,6 +5,7 @@ import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,8 @@ import com.topics.LoginResponse;
 import com.topics.NewAccountRequest;
 import com.topics.NewAccountResponse;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class BusinessLogic {
     @Autowired
@@ -27,16 +30,24 @@ public class BusinessLogic {
     public final PostgresService postgresService;
 
     // REST Clients to communicate with other microservices
-    private RestClient notificationServiceClient = RestClient.create();
     private RestClient sessionManagerClient = RestClient.create();
-    private String session = "http://session-manager:8090/api/v1/login";
+    @Value("${session.manager}")
+    private String sessionManager;
+    @Value("${session.manager.port}")
+    private String sessionManagerPort;
+    private String session;
 
-    private HashMap<String, RestClient> restRouter = new HashMap<>();
     private HashMap<RestClient, String> restEndpoints = new HashMap<>();
 
     public BusinessLogic(PostgresService postgresService) {
         this.postgresService = postgresService;
-        mapTopicsToClient();
+    }
+
+    @PostConstruct
+    public void init() {
+        session = "http://" + sessionManager + ":" + sessionManagerPort + "/api/v1/login";
+        restEndpoints.put(sessionManagerClient, session);
+        LOG.info("BusinessLogic initialized with Session Manager at: " + session);
     }
 
     /*
@@ -49,11 +60,6 @@ public class BusinessLogic {
      * # user-management-service:8086
      * # gui-service:8087
      */
-    public void mapTopicsToClient() {
-        restRouter.put("SeatResponse", notificationServiceClient);
-        restEndpoints.put(notificationServiceClient, "http://notification-service:8083/api/v1/processTopic");
-        restEndpoints.put(sessionManagerClient, "http://session-manager:8083/api/v1/login");
-    }
 
     public ResponseEntity<String> processLoginRequest(LoginRequest loginRequest) {
         LOG.info("Processing the LoginRequest...");
@@ -64,21 +70,21 @@ public class BusinessLogic {
             // notify the session manager of the successful login and set username as active session
             LOG.info("Updating the session manager with the active user: " + loginAttempt.getUsername());
             sessionManagerClient.post()
-                .uri(session)
+                .uri(restEndpoints.get(sessionManagerClient))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(loginAttempt.getUsername())
                 .retrieve()
                 .toEntity(String.class);
 
             // async notify the notification service of the successful login
-            LoginResponse rsp = createLoginResponse(loginRequest, "SUCCESSFUL");
+            LoginResponse rsp = createLoginResponse(loginRequest, "SUCCESSFUL", loginAttempt.getUsername());
             asyncLogic.handleNotifications(rsp);
             return ResponseEntity.ok("Login successful!");
         } else {
             LOG.info("Login failed for email: " + loginRequest.getEmail());
 
             // async notify the notification service of the failed login
-            LoginResponse rsp = createLoginResponse(loginRequest, "FAILED");
+            LoginResponse rsp = createLoginResponse(loginRequest, "FAILED", "NO USER");
             asyncLogic.handleNotifications(rsp);
             return ResponseEntity.status(401).body("Login failed: Invalid email or password.");
         }
@@ -108,9 +114,6 @@ public class BusinessLogic {
         
         return ResponseEntity.status(500).body(status);
     }
-
-
-
 
     public ResponseEntity<String> processNewAccountRequest(NewAccountRequest newAccountRequest) {
         LOG.info("Processing the NewAccountRequest...");
@@ -184,11 +187,12 @@ public class BusinessLogic {
         }
     }
 
-    private LoginResponse createLoginResponse(LoginRequest loginRequest, String status) {
+    private LoginResponse createLoginResponse(LoginRequest loginRequest, String status, String userName) {
         LOG.info("Creating a LoginResponse... with status: " + status);
         LoginResponse loginResponse = new LoginResponse();
         loginResponse.setTopicName("LoginResponse");
         loginResponse.setCorrelatorId(loginRequest.getCorrelatorId());
+        loginResponse.setUsername(userName);
         loginResponse.setStatus(LoginResponse.Status.valueOf(status));
         loginResponse.setTimestamp(new Date());
         return loginResponse;
@@ -199,6 +203,7 @@ public class BusinessLogic {
         NewAccountResponse newAccountResponse = new NewAccountResponse();
         newAccountResponse.setTopicName("NewAccountResponse");
         newAccountResponse.setCorrelatorId(newAccountRequest.getCorrelatorId());
+        newAccountResponse.setUsername(newAccountRequest.getUsername());
         newAccountResponse.setStatus(NewAccountResponse.Status.valueOf(status));
         newAccountResponse.setStatusMessage(stsMsg);
         return newAccountResponse;
