@@ -17,6 +17,7 @@ import com.schema.SchemaValidator;
 // topic list
 import com.topics.LoginRequest;
 import com.topics.NewAccountRequest;
+import com.topics.RewardsRequest;
 import com.topics.AccountInfoRequest;
 /*
  * MainController.java reponsible for handling incoming requests and delegating other classes to
@@ -83,6 +84,12 @@ public class MainController {
                         AccountInfoRequest accountInfoRequest =
                                 mapper.readValue(jsonNode.toString(), AccountInfoRequest.class);
                         response = businessLogic.processAccountInfoRequest(accountInfoRequest);
+                    }
+                        break;
+                    case "RewardsRequest": {
+                        RewardsRequest rewardsRequest =
+                                mapper.readValue(jsonNode.toString(), RewardsRequest.class);
+                        response = businessLogic.processRewardsRequest(rewardsRequest);
                     }
                         break;
                     default: {

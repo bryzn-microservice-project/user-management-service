@@ -1,8 +1,12 @@
 package com.postgres;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import com.postgres.models.Account;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,34 +14,40 @@ import java.util.Optional;
 public class PostgresService {
 
     @Autowired
-    private AccountRepository paymentRepository;
+    private AccountRepository accountRepository;
 
     public List<Account> findAll() {
-        return paymentRepository.findAll();
+        return accountRepository.findAll();
     }
 
     public Optional<Account> findById(Long id) {
-        return paymentRepository.findById(id);
+        return accountRepository.findById(id);
     }
 
     // save includes creating and updating
-    public Account save(Account payment) {
-        return paymentRepository.save(payment);
+    @Transactional
+    public Account save(Account account) {
+        return accountRepository.save(account);
     }
 
     public void deleteById(Long id) {
-        paymentRepository.deleteById(id);
+        accountRepository.deleteById(id);
     }
 
     public List<Account> findByName(String name) {
-        return paymentRepository.findByName(name);
+        return accountRepository.findByName(name);
     }
 
     public Account findByUsername(String username) {
-        return paymentRepository.findByUsername(username);
+        return accountRepository.findByUsername(username);
     }
 
     public Account findByEmail(String email) {
-        return paymentRepository.findByEmail(email);
+        return accountRepository.findByEmail(email);
+    }
+
+    @Transactional
+    public void updateRewardPoints(Long id, int rewardPoints) {
+        accountRepository.updateRewardPoints(id, rewardPoints);
     }
 }

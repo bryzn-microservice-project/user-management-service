@@ -23,6 +23,12 @@
   "password": "superSecret1"
 }
 
+{
+  "topicName": "LoginRequest",
+  "correlatorId": 67890,
+  "email": "bryzntest@gmail.com",
+  "password": "pass123"
+}
 
 // WORKING POSTGRES JSON TEST WITH DATABASE
 {

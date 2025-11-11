@@ -1,7 +1,11 @@
 package com.postgres;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.postgres.models.Account;
+import jakarta.transaction.Transactional;
 import java.util.List;
 
 /*
@@ -26,4 +30,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     List<Account> findByName(String name);
     Account findByUsername(String username);
 	Account findByEmail(String email);
+
+    @Transactional
+    @Modifying
+    @Query("UPDATE Account a SET a.rewardPoints = :rewardPoints WHERE a.id = :id")
+    public void updateRewardPoints(@Param("id") Long id, @Param("rewardPoints") int rewardPoints);
 }

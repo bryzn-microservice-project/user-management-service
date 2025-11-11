@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.postgres.PostgresService;
 import com.postgres.models.Account;
 import com.topics.AccountInfoRequest;
@@ -18,8 +20,11 @@ import com.topics.LoginRequest;
 import com.topics.LoginResponse;
 import com.topics.NewAccountRequest;
 import com.topics.NewAccountResponse;
-
+import com.topics.RewardsRequest;
+import com.topics.RewardsResponse;
+import com.topics.RewardsResponse.Application;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 
 @Service
 public class BusinessLogic {
@@ -101,7 +106,7 @@ public class BusinessLogic {
             accountInfo = postgresService.findByEmail(accountInfoRequest.getEmail());
             LOG.info("Found account with the email " + accountInfoRequest.getEmail() + "!!");
             AccountInfoResponse rsp = createAccountInfoResponse(accountInfo, accountInfoRequest);
-            return ResponseEntity.ok().body(rsp.toString());
+            return ResponseEntity.ok().body(toJson(rsp));
         }
 
         LOG.info("Attempting to search by username...");
@@ -109,12 +114,13 @@ public class BusinessLogic {
             accountInfo = postgresService.findByUsername(accountInfoRequest.getUsername());
             LOG.info("Found account with the username " + accountInfoRequest.getEmail() + "!!");
             AccountInfoResponse rsp = createAccountInfoResponse(accountInfo, accountInfoRequest);
-            return ResponseEntity.ok().body(rsp.toString());
+            return ResponseEntity.ok().body(toJson(rsp));
         }
         
         return ResponseEntity.status(500).body(status);
     }
 
+    @Transactional
     public ResponseEntity<String> processNewAccountRequest(NewAccountRequest newAccountRequest) {
         LOG.info("Processing the NewAccountRequest...");
         // give a default value for easier debugging
@@ -187,6 +193,30 @@ public class BusinessLogic {
         }
     }
 
+    @Transactional
+    public ResponseEntity<String> processRewardsRequest(RewardsRequest rewardsRequest) {
+        LOG.info("Processing the RewardsRequest...");
+        Account account = postgresService.findByUsername(rewardsRequest.getUsername());
+
+        if(account != null) {
+            LOG.info("Found account for user: " + rewardsRequest.getUsername());
+            postgresService.updateRewardPoints(account.getId(), rewardsRequest.getRewardPoints());
+            LOG.info("Updated reward points for user: " + rewardsRequest.getUsername() + " to " + rewardsRequest.getRewardPoints());
+            RewardsResponse rsp = new RewardsResponse();
+            rsp.setTopicName("RewardsResponse");
+            rsp.setCorrelatorId(rewardsRequest.getCorrelatorId());
+            rsp.setUsername(account.getUsername());
+            rsp.setApplication(Application.SUCCESS);
+            rsp.setRewardPoints(account.getRewardPoints());
+            rsp.setEmail(account.getEmail());
+            rsp.setTimestamp(new Date());
+            return ResponseEntity.ok(toJson(rsp));
+        } else {
+            LOG.error("No account found for user: " + rewardsRequest.getUsername());
+            return ResponseEntity.status(404).body("No account found for user: " + rewardsRequest.getUsername());
+        }
+    }
+
     private LoginResponse createLoginResponse(LoginRequest loginRequest, String status, String userName) {
         LOG.info("Creating a LoginResponse... with status: " + status);
         LoginResponse loginResponse = new LoginResponse();
@@ -227,5 +257,17 @@ public class BusinessLogic {
             accountInfoResponse.setCreditCard("No credit card on file.");
         }
         return accountInfoResponse;
+    }
+
+    // Helper method to serialize an object to JSON string
+    private String toJson(Object obj) {
+        try {
+            // Use Jackson ObjectMapper to convert the object to JSON
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writeValueAsString(obj);  // Convert object to JSON string
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            return "{\"error\":\"Error processing JSON\"}";
+        }
     }
 }
