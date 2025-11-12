@@ -56,6 +56,7 @@ public class AsyncLogic {
     // to the notification service
     @Async 
     public void handleNotifications(LoginResponse loginResponse) {
+        System.out.println("\n");
         LOG.info("Asynchronously sending the LoginResponse to the notification service...");
         notificationServiceClient.post()
             .uri(restEndpoints.get(notificationServiceClient))
@@ -66,6 +67,7 @@ public class AsyncLogic {
 
     @Async 
     public void handleNotifications(NewAccountResponse newAccountResponse) {
+        System.out.println("\n");
         LOG.info("Asynchronously sending the NewAccountResponse to the notification service...");
         notificationServiceClient.post()
             .uri(restEndpoints.get(notificationServiceClient))

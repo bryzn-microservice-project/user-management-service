@@ -67,6 +67,7 @@ public class BusinessLogic {
      */
 
     public ResponseEntity<String> processLoginRequest(LoginRequest loginRequest) {
+        System.out.println("\n");
         LOG.info("Processing the LoginRequest...");
         Account loginAttempt = postgresService.findByEmail(loginRequest.getEmail());
         if(loginAttempt != null && loginAttempt.getPassword().equals(loginRequest.getPassword())) {
@@ -96,6 +97,7 @@ public class BusinessLogic {
     }
 
     public ResponseEntity<String> processAccountInfoRequest(AccountInfoRequest accountInfoRequest) {
+        System.out.println("\n");
         LOG.info("Processing the AccountInfoRequest...");
         // give a default value for easier debugging
         String status = "Internal Error: Could not grab user data.";
@@ -122,6 +124,7 @@ public class BusinessLogic {
 
     @Transactional
     public ResponseEntity<String> processNewAccountRequest(NewAccountRequest newAccountRequest) {
+        System.out.println("\n");
         LOG.info("Processing the NewAccountRequest...");
         // give a default value for easier debugging
         String status = "NO STATUS";
@@ -195,6 +198,7 @@ public class BusinessLogic {
 
     @Transactional
     public ResponseEntity<String> processRewardsRequest(RewardsRequest rewardsRequest) {
+        System.out.println("\n");
         LOG.info("Processing the RewardsRequest...");
         Account account = postgresService.findByUsername(rewardsRequest.getUsername());
 
