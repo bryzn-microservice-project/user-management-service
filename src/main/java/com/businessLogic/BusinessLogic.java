@@ -4,8 +4,9 @@ import java.util.Date;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -28,14 +29,12 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class BusinessLogic {
-    @Autowired
-    AsyncLogic asyncLogic;
-    
     private static final Logger LOG = LoggerFactory.getLogger(BusinessLogic.class);
     public final PostgresService postgresService;
+    private final AsyncLogic asyncLogic;
 
     // REST Clients to communicate with other microservices
-    private RestClient sessionManagerClient = RestClient.create();
+    private RestClient sessionManagerClient;
     @Value("${session.manager}")
     private String sessionManager;
     @Value("${session.manager.port}")
@@ -44,8 +43,10 @@ public class BusinessLogic {
 
     private HashMap<RestClient, String> restEndpoints = new HashMap<>();
 
-    public BusinessLogic(PostgresService postgresService) {
+    public BusinessLogic(PostgresService postgresService, RestClient sessionManagerClient, AsyncLogic asyncLogic) {
         this.postgresService = postgresService;
+        this.sessionManagerClient = sessionManagerClient;
+        this.asyncLogic = asyncLogic;
     }
 
     @PostConstruct
@@ -56,36 +57,40 @@ public class BusinessLogic {
     }
 
     /*
-     * Method to map topics to their respective microservices and endpoints
-     * # api-gateway:8081
-     * # movie-service:8082
-     * # notification-service:8083
-     * # payment-service:8084
-     * # seating-service:8085
-     * # user-management-service:8086
-     * # gui-service:8087
+     * Method to map topics to their respective microservices and endpoints # api-gateway:8081 #
+     * movie-service:8082 # notification-service:8083 # payment-service:8084 # seating-service:8085
+     * # user-management-service:8086 # gui-service:8087
      */
 
     public ResponseEntity<String> processLoginRequest(LoginRequest loginRequest) {
         System.out.println("\n");
         LOG.info("Processing the LoginRequest...");
         Account loginAttempt = postgresService.findByEmail(loginRequest.getEmail());
-        if(loginAttempt != null && loginAttempt.getPassword().equals(loginRequest.getPassword())) {
+        if (loginAttempt != null && loginAttempt.getPassword().equals(loginRequest.getPassword())) {
             LOG.info("Login successful for email: " + loginRequest.getEmail());
-            
-            // notify the session manager of the successful login and set username as active session
-            LOG.info("Updating the session manager with the active user: " + loginAttempt.getUsername());
-            sessionManagerClient.post()
-                .uri(restEndpoints.get(sessionManagerClient))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(loginAttempt.getUsername())
-                .retrieve()
-                .toEntity(String.class);
 
-            // async notify the notification service of the successful login
-            LoginResponse rsp = createLoginResponse(loginRequest, "SUCCESSFUL", loginAttempt.getUsername());
-            asyncLogic.handleNotifications(rsp);
-            return ResponseEntity.ok("Login successful!");
+            // notify the session manager of the successful login and set username as active session
+            LOG.info("Updating the session manager with the active user: "
+                    + loginAttempt.getUsername());
+            ResponseEntity<String> loginResponse =
+                    sessionManagerClient.post().uri(restEndpoints.get(sessionManagerClient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(loginAttempt.getUsername()).retrieve().toEntity(String.class);
+
+            if (loginResponse.getStatusCode() == HttpStatusCode.valueOf(200)) {
+                // async notify the notification service of the successful login
+                LoginResponse rsp =
+                        createLoginResponse(loginRequest, "SUCCESSFUL", loginAttempt.getUsername());
+                asyncLogic.handleNotifications(rsp);
+                return ResponseEntity.ok("Session Manager was able to log the user in!");
+            } else {
+                // async notify the notification service of the successful login
+                LoginResponse rsp =
+                        createLoginResponse(loginRequest, "FAILED", loginAttempt.getUsername());
+                asyncLogic.handleNotifications(rsp);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Session Manager was unable to sign the user in...");
+            }
         } else {
             LOG.info("Login failed for email: " + loginRequest.getEmail());
 
@@ -104,7 +109,7 @@ public class BusinessLogic {
         Account accountInfo;
 
         LOG.info("Attempting to search by email...");
-        if(postgresService.findByEmail(accountInfoRequest.getEmail()) != null) {
+        if (postgresService.findByEmail(accountInfoRequest.getEmail()) != null) {
             accountInfo = postgresService.findByEmail(accountInfoRequest.getEmail());
             LOG.info("Found account with the email " + accountInfoRequest.getEmail() + "!!");
             AccountInfoResponse rsp = createAccountInfoResponse(accountInfo, accountInfoRequest);
@@ -112,13 +117,13 @@ public class BusinessLogic {
         }
 
         LOG.info("Attempting to search by username...");
-        if(postgresService.findByUsername(accountInfoRequest.getUsername()) != null) {
+        if (postgresService.findByUsername(accountInfoRequest.getUsername()) != null) {
             accountInfo = postgresService.findByUsername(accountInfoRequest.getUsername());
             LOG.info("Found account with the username " + accountInfoRequest.getEmail() + "!!");
             AccountInfoResponse rsp = createAccountInfoResponse(accountInfo, accountInfoRequest);
             return ResponseEntity.ok().body(toJson(rsp));
         }
-        
+
         return ResponseEntity.status(500).body(status);
     }
 
@@ -130,26 +135,30 @@ public class BusinessLogic {
         String status = "NO STATUS";
         String statusMsg = "NO STATUS";
         Account newAccount = new Account();
-                newAccount.setName(newAccountRequest.getName());
-                newAccount.setEmail(newAccountRequest.getEmail());
-                newAccount.setUsername(newAccountRequest.getUsername());
-                newAccount.setPassword(newAccountRequest.getPassword());
-                newAccount.setRewardPoints(50); // new accounts start with 50 reward points
-                newAccount.setCreditCard(newAccountRequest.getCreditCard());
-                newAccount.setCvc(newAccountRequest.getCvc());
+        newAccount.setName(newAccountRequest.getName());
+        newAccount.setEmail(newAccountRequest.getEmail());
+        newAccount.setUsername(newAccountRequest.getUsername());
+        newAccount.setPassword(newAccountRequest.getPassword());
+        newAccount.setRewardPoints(50); // new accounts start with 50 reward points
+        newAccount.setCreditCard(newAccountRequest.getCreditCard());
+        newAccount.setCvc(newAccountRequest.getCvc());
 
-        if(postgresService.findByEmail(newAccountRequest.getEmail()) != null) {
-            LOG.info("Failed to create a new account... Email already in use " + newAccountRequest.getEmail());
+        if (postgresService.findByEmail(newAccountRequest.getEmail()) != null) {
+            LOG.info("Failed to create a new account... Email already in use "
+                    + newAccountRequest.getEmail());
             status = "FAILED";
             statusMsg = "Email already in use";
-            return ResponseEntity.status(409).body("Account creation failed: Email already in use.");
+            return ResponseEntity.status(409)
+                    .body("Account creation failed: Email already in use.");
         }
 
-        if(postgresService.findByUsername(newAccountRequest.getUsername()) != null) {
-            LOG.info("Failed to create a new account... Username already in use " + newAccountRequest.getUsername());
+        if (postgresService.findByUsername(newAccountRequest.getUsername()) != null) {
+            LOG.info("Failed to create a new account... Username already in use "
+                    + newAccountRequest.getUsername());
             status = "FAILED";
             statusMsg = "Username already in use";
-            return ResponseEntity.status(409).body("Account creation failed: Username already in use.");
+            return ResponseEntity.status(409)
+                    .body("Account creation failed: Username already in use.");
         }
 
         Account savedAccount = postgresService.save(newAccount);
@@ -159,14 +168,13 @@ public class BusinessLogic {
         LOG.info("Username: " + savedAccount.getUsername());
         LOG.info("Reward Points: " + savedAccount.getRewardPoints());
 
-        if(savedAccount.getCreditCard() != null && !savedAccount.getCreditCard().isEmpty())
-        {
+        if (savedAccount.getCreditCard() != null && !savedAccount.getCreditCard().isEmpty()) {
             String cc = savedAccount.getCreditCard();
             String lastFour = cc.substring(cc.length() - 4);
             StringBuilder sb = new StringBuilder();
-            for(int i = 0; i < cc.length() - 4; i++) {
+            for (int i = 0; i < cc.length() - 4; i++) {
                 sb.append("*");
-                if(i % 4 == 0 && i != 0) {
+                if (i % 4 == 0 && i != 0) {
                     sb.append(" ");
                 }
             }
@@ -174,7 +182,7 @@ public class BusinessLogic {
             LOG.info("Credit Card: " + sb.toString());
         }
 
-        if(savedAccount.getId() != null) {
+        if (savedAccount.getId() != null) {
             status = "SUCCESSFUL";
             statusMsg = "Account created successfully";
 
@@ -186,7 +194,8 @@ public class BusinessLogic {
         } else {
             // if the status/statusMsg is still the default then something went wrong with postgres
             status = status.isEmpty() ? "FAILED" : status;
-            statusMsg = statusMsg.isEmpty() ? "Internal Error: Failed to create new account" : statusMsg;
+            statusMsg = statusMsg.isEmpty() ? "Internal Error: Failed to create new account"
+                    : statusMsg;
 
             // async notify the notification service of the failed account creation
             NewAccountResponse rsp = createNewAccountResponse(newAccountRequest, status, statusMsg);
@@ -202,26 +211,29 @@ public class BusinessLogic {
         LOG.info("Processing the RewardsRequest...");
         Account account = postgresService.findByUsername(rewardsRequest.getUsername());
 
-        if(account != null) {
+        if (account != null) {
             LOG.info("Found account for user: " + rewardsRequest.getUsername());
-            postgresService.updateRewardPoints(account.getId(), rewardsRequest.getRewardPoints());
-            LOG.info("Updated reward points for user: " + rewardsRequest.getUsername() + " to " + rewardsRequest.getRewardPoints());
+            Account postApplication = postgresService.updateRewardPoints(account.getId(), rewardsRequest.getRewardPoints());
+            LOG.info("Updated reward points for user: " + postApplication.getUsername() + " to "
+                    + postApplication.getRewardPoints());
             RewardsResponse rsp = new RewardsResponse();
             rsp.setTopicName("RewardsResponse");
             rsp.setCorrelatorId(rewardsRequest.getCorrelatorId());
-            rsp.setUsername(account.getUsername());
+            rsp.setUsername(postApplication.getUsername());
             rsp.setApplication(Application.SUCCESS);
-            rsp.setRewardPoints(account.getRewardPoints());
-            rsp.setEmail(account.getEmail());
+            rsp.setRewardPoints(postApplication.getRewardPoints());
+            rsp.setEmail(postApplication.getEmail());
             rsp.setTimestamp(new Date());
             return ResponseEntity.ok(toJson(rsp));
         } else {
             LOG.error("No account found for user: " + rewardsRequest.getUsername());
-            return ResponseEntity.status(404).body("No account found for user: " + rewardsRequest.getUsername());
+            return ResponseEntity.status(404)
+                    .body("No account found for user: " + rewardsRequest.getUsername());
         }
     }
 
-    private LoginResponse createLoginResponse(LoginRequest loginRequest, String status, String userName) {
+    private LoginResponse createLoginResponse(LoginRequest loginRequest, String status,
+            String userName) {
         LOG.info("Creating a LoginResponse... with status: " + status);
         LoginResponse loginResponse = new LoginResponse();
         loginResponse.setTopicName("LoginResponse");
@@ -232,7 +244,8 @@ public class BusinessLogic {
         return loginResponse;
     }
 
-    private NewAccountResponse createNewAccountResponse(NewAccountRequest newAccountRequest, String status, String stsMsg) {
+    private NewAccountResponse createNewAccountResponse(NewAccountRequest newAccountRequest,
+            String status, String stsMsg) {
         LOG.info("Creating a NewAccountResponse... with status: " + status);
         NewAccountResponse newAccountResponse = new NewAccountResponse();
         newAccountResponse.setTopicName("NewAccountResponse");
@@ -243,7 +256,8 @@ public class BusinessLogic {
         return newAccountResponse;
     }
 
-    private AccountInfoResponse createAccountInfoResponse(Account account, AccountInfoRequest accountInfoRequest) {
+    private AccountInfoResponse createAccountInfoResponse(Account account,
+            AccountInfoRequest accountInfoRequest) {
         LOG.info("Creating a AccountInfoResponse...");
         AccountInfoResponse accountInfoResponse = new AccountInfoResponse();
         accountInfoResponse.setTopicName("AccountInfoResponse");
@@ -253,8 +267,7 @@ public class BusinessLogic {
         accountInfoResponse.setUsername(account.getUsername());
         accountInfoResponse.setRewardPoints(account.getRewardPoints());
 
-        if(account.getCreditCard() != null && !account.getCreditCard().isEmpty())
-        {
+        if (account.getCreditCard() != null && !account.getCreditCard().isEmpty()) {
             accountInfoResponse.setCreditCard(account.getCreditCard());
             accountInfoResponse.setCvc(account.getCvc());
         } else {
@@ -268,7 +281,7 @@ public class BusinessLogic {
         try {
             // Use Jackson ObjectMapper to convert the object to JSON
             ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.writeValueAsString(obj);  // Convert object to JSON string
+            return objectMapper.writeValueAsString(obj); // Convert object to JSON string
         } catch (JsonProcessingException e) {
             e.printStackTrace();
             return "{\"error\":\"Error processing JSON\"}";

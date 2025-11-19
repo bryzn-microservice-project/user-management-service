@@ -11,7 +11,6 @@
   "email": "john.doe@example.com",
   "username": "johndoe123",
   "password": "superSecret1",
-  "rewardPoints": 250,
   "creditCard": "4111111111111111",
   "cvc": "123"
 }
@@ -50,6 +49,15 @@
   "password": "pass123"
 }
 
+{
+  "topicName": "RewardsRequest",
+  "correlatorId": 12345,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "username": "johndoe123",
+  "rewardPoints": 250,
+  "application": "REWARD_POINTS_ADDED"
+}
 
 
 POSTGRES NOTES

@@ -34,5 +34,5 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @Transactional
     @Modifying
     @Query("UPDATE Account a SET a.rewardPoints = :rewardPoints WHERE a.id = :id")
-    public void updateRewardPoints(@Param("id") Long id, @Param("rewardPoints") int rewardPoints);
+    public Account updateRewardPoints(@Param("id") Long id, @Param("rewardPoints") int rewardPoints);
 }

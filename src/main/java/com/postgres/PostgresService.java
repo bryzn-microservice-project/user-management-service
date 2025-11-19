@@ -47,7 +47,7 @@ public class PostgresService {
     }
 
     @Transactional
-    public void updateRewardPoints(Long id, int rewardPoints) {
-        accountRepository.updateRewardPoints(id, rewardPoints);
+    public Account updateRewardPoints(Long id, int rewardPoints) {
+        return accountRepository.updateRewardPoints(id, rewardPoints);
     }
 }
