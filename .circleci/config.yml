@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/openjdk:21-jdk  # Using OpenJDK 21 image for the build environment
+      - image: cimg/openjdk:21-jdk  # Using OpenJDK 21 image for the build environment
     steps:
       - checkout  # Checkout the code from the GitHub repository
 
