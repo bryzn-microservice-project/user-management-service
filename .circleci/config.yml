@@ -25,16 +25,16 @@ jobs:
             MAVEN_USERNAME: $MAVEN_USERNAME  # Use the environment variable for Maven username
             MAVEN_PASSWORD: $MAVEN_PASSWORD  # Use the environment variable for Maven password
 
-    # Caching Maven dependencies to speed up builds
-    - restore_cache:
-        keys:
-          - v1-maven-dependencies-{{ checksum "pom.xml" }}  # Cache key based on pom.xml checksum
-          - v1-maven-dependencies-  # Fallback cache key
+      # Caching Maven dependencies to speed up builds
+      - restore_cache:
+          keys:
+            - v1-maven-dependencies-{{ checksum "pom.xml" }}  # Cache key based on pom.xml checksum
+            - v1-maven-dependencies-  # Fallback cache key
 
-    - save_cache:
-        paths:
-          - ~/.m2/repository  # Cache Maven dependencies
-        key: v1-maven-dependencies-{{ checksum "pom.xml" }}  # Cache key based on pom.xml checksum
+      - save_cache:
+          paths:
+            - ~/.m2/repository  # Cache Maven dependencies
+          key: v1-maven-dependencies-{{ checksum "pom.xml" }}  # Cache key based on pom.xml checksum
 
 workflows:
   version: 2
