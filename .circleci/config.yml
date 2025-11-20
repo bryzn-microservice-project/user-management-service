@@ -22,10 +22,10 @@ jobs:
           name: Build with Maven
           command: mvn -B package --file pom.xml -s settings.xml
           environment:
-            MAVEN_USERNAME: $MAVEN_USERNAME
-            MAVEN_PASSWORD: $MAVEN_PASSWORD
+            MAVEN_USERNAME: $MAVEN_USERNAME  # Use the environment variable for Maven username
+            MAVEN_PASSWORD: $MAVEN_PASSWORD  # Use the environment variable for Maven password
 
-    # Define caching for Maven dependencies to speed up builds
+    # Caching Maven dependencies to speed up builds
     - restore_cache:
         keys:
           - v1-maven-dependencies-{{ checksum "pom.xml" }}  # Cache key based on pom.xml checksum
