@@ -41,6 +41,7 @@ workflows:
   build:
     jobs:
       - build:
+          context: BUILD_ENV
           filters:
             branches:
               only: main  # Trigger on push/pull request to the 'main' branch
